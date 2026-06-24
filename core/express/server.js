@@ -66,17 +66,19 @@ function Server(serverConfig = {}) {
   }
 
   // Todo: pass in directories that we can set as public paths to use in express app.static whatever
-  app.use(express.json({ limit: JSONLimit }), (err, req, res, next) => {
-    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-      res.status(400).json({
-        code: 'ERR',
-        error: true,
-        message: 'Error encountered in parsing request payload. Please check payload and try again',
-      });
-    } else {
-      next();
-    }
+  app.use((err, req, res, next) => {
+  if (err.errorCode || err.isApplicationError) {
+    return res.status(err.customStatus || err.status || 400).json({
+      status: "error",
+      code: err.errorCode || "BAD_REQUEST",
+      message: err.message
+    });
+  }
+  return res.status(500).json({
+    status: "error",
+    message: err.message || "An unexpected error occurred."
   });
+});
 
   const handlerHelpers = {};
   handlerHelpers.http_statuses = expressEnums.HTTPStatusCode;
@@ -241,11 +243,12 @@ function Server(serverConfig = {}) {
 
         appLogger.error(requestLog, `error: ${statusCode} ${method} ${path}`);
 
-        responseComponents.statusCode = statusCode;
+        responseComponents.statusCode = error.customStatus || statusCode;
         responseComponents.body.status = 'error';
-        responseComponents.body.message = error.isApplicationError
-          ? error.message
-          : 'Some error occured.';
+        responseComponents.body.message = error.isApplicationError ? error.message : 'Some error occured.';
+        if (error.customCode) {
+          responseComponents.body.code = error.customCode;
+        }
         responseComponents.body.errors = error.details || undefined;
         responseComponents.body.data = error.context;
 

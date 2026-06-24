@@ -1,4 +1,5 @@
 const validator = require('@app-core/validator');
+
 const { echoLoginValidation } = require('@app/workers');
 // const { throwAppError } = require('@app-core/errors');
 
